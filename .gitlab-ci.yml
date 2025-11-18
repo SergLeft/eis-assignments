@@ -15,7 +15,7 @@ build:
 test:
   stage: test
   script:
-    - sbt "testOnly basics.* rational.*"
+    - sbt "testOnly geometry.* optional.*"
   dependencies:
     - build
   artifacts:
