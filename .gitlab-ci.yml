@@ -15,7 +15,7 @@ build:
 test:
   stage: test
   script:
-    - sbt "testOnly geometry.* optional.*"
+    - sbt "testOnly dbms.v1.ScoredBulkLoadingSuite dbms.v1.ScoredStatsTableRegressionSuite dbms.v1.ScoredFilterScanSuite dbms.v1.ScoredProjectionSuite dbms.v1.ScoredQuerySuite dbms.v1.ScoredEmptyTableSuite dbms.v1.ScoredStatsTableSuite"
   dependencies:
     - build
   artifacts:
