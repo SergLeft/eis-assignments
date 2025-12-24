@@ -2,7 +2,7 @@ package basics
 
 import org.scalatest.funsuite.AnyFunSuite
 
-/*
+
 class ScoredCoordinateSuite extends AnyFunSuite {
 
   def coordinatesEqual(op1: Coordinate, op2: Coordinate): Boolean = op1.x == op2.x && op1.y == op2.y
@@ -122,4 +122,4 @@ class ScoredCoordinateSuite extends AnyFunSuite {
     assertDoesNotCompile("coordinate.y = -231.3")
   }
 }
-*/
+

@@ -25,5 +25,6 @@ import rational.mutable.Rational
   println(s"Entry 0: ${buffer(0).numerator}/${buffer(0).denominator}")
   println(s"Entry 1: ${buffer(1).numerator}/${buffer(1).denominator}")
 
-  // Erklärung: ???
+  // Erklärung: Variable ist eigentlich ein Pointer. Wenn wir darauf addieren, addieren wir auf dem Pointer
+  // dieser wird als Verweis für beide Stellen genutzt und dadurch kommt das Ergebnis zustande
 }

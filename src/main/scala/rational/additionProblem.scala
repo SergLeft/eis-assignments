@@ -11,5 +11,7 @@ import rational.immutable.Rational
 
   println(s"Result: ${result.numerator}/${result.denominator}")
 
-  // Erklärung: ???
+  // Erklärung: In dieser Addition kommt es einfach zu einem Overflow, da die Zahlen
+  // zu groß werden bei der Multiplikation, die dafür nötig ist. Dadurch kommt die 
+  // falsche Zahl zustande
 }

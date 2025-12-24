@@ -41,17 +41,33 @@ class Rational(n: Int, d: Int) {
     new Rational(numerator + that * denominator, denominator)
   }
 
-  def unary_- : Rational = ???
+  def unary_- : Rational = {
+    new Rational(numerator * -1, denominator)
+  }
 
-  def reciprocal : Rational = ???
+  def reciprocal : Rational = {
+    if (numerator == 0)
+      throw new ArithmeticException("The numerator cannot be zero")
+    new Rational(denominator, numerator)
+  }
 
-  def -(that: Rational): Rational = ???
+  def -(that: Rational): Rational = {
+    this + that.unary_-
+  }
 
-  def -(that: Int): Rational = ???
+  def -(that: Int): Rational = {
+    this - new Rational(that, 1)
+  }
 
-  def *(that: Rational): Rational = ???
+  def *(that: Rational): Rational = {
+    new Rational(this.numerator * that.numerator, this.denominator * that.denominator)
+  }
 
-  def /(that: Rational): Rational = ???
+  def /(that: Rational): Rational = {
+    if (that.numerator == 0)
+      throw new ArithmeticException("The numerator cannot be zero")
+    new Rational(numerator * that.denominator, denominator * that.numerator)
+  }
 
   /** Returns true iff that Rational is less than this Rational
    *
@@ -69,14 +85,25 @@ class Rational(n: Int, d: Int) {
     if (lessThan(that)) that else this
   }
 
-  def min(that: Rational): Rational = ???
+  def min(that: Rational): Rational = {
+    if (lessThan(that)) this else that
+  }
 
   /** Prints a textual representation of this Rational */
   def print(): Unit = {
-    println(s"$numerator/$denominator")
+    if (denominator == 1) {
+      println(s"$numerator")
+    } else {
+      println(s"$numerator/$denominator")
+    }
+
   }
 
-  override def toString: String = ???
+  override def toString: String = {
+    if (denominator == 1) s"$numerator"
+    else if (numerator == 0) s"0"
+    else s"$numerator/$denominator"
+  }
 
   /** Returns the gcd of two passed Ints */
   @tailrec

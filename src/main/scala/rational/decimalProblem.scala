@@ -22,5 +22,9 @@ def rationalToDecimal(r: Rational) = {
   println(s"Second fraction: $dec2")
   println(s"Third fraction: $dec3")
 
-  // Erklärung: ???
+  // Erklärung: Integer können wir in Scala nicht dividieren,
+  // da Ints nicht automatisch zu Double oder Float umgewandelt werden
+  // Theoretisch könnte das Problem dadurch gelöst werden, indem man
+  // numerator und denominator als doubles darstellt in der obigen Methode
+  // mit val n und val d: Double jeweils und dann n/d
 }
