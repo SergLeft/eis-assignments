@@ -53,6 +53,9 @@ enum IndexType {
  */
 class TableRecord(elems: Seq[(String, Value)]) {
 
+  /** Check if element has required attributes or is empty */
+  if (elems.isEmpty)
+    throw new IllegalArgumentException("Cannot create a record with no attributes")
 
   /** Maps each attribute of the record to its value. */
   private val attributes: Map[String, Value] = elems.toMap
@@ -84,6 +87,9 @@ class TableRecord(elems: Seq[(String, Value)]) {
  */
 class Table(attributes: Seq[String]) {
 
+  /** Check if attribute is empty or not */
+  if (attributes.isEmpty)
+    throw new IllegalArgumentException("Cannot create a table with no attributes")
 
   if (attributes.size != attributes.distinct.size)
     throw new IllegalArgumentException("Cannot create a table with duplicate attributes")
@@ -93,6 +99,29 @@ class Table(attributes: Seq[String]) {
 
   /** Holds all records of the table in an ordered fashion. */
   protected val records: mutable.ArrayBuffer[TableRecord] = mutable.ArrayBuffer()
+
+  /** Secondary constructor - Bulk loading. Creates a table with the provided attributes
+   * as schema (columns) and given records as values (rows)
+   * Also checks for proper structure of the given records as they regard to the table schema
+   */
+  def this(attributes: Seq[String], initialRecords: Seq[TableRecord]) = {
+    // primary constructor call
+    this(attributes)
+
+    // Record validation and appending
+    initialRecords.foreach { record =>
+      // Check if the record has the same number of attributes as the schema
+      if (record.numAttributes != schema.size)
+        throw IllegalArgumentException("Passed record has a different number of attributes than the table's schema")
+
+      // Check if the record has all the required attributes compared to the schema
+      if (schema.exists(attr => !record.hasAttribute(attr)))
+        throw IllegalArgumentException("Passed record has a different schema to the table")
+
+      // Appends the record to the table
+      records.append(record)
+    }
+  }
 
   /** Returns the number of records that are currently present in the table. */
   def numRecords: Int = records.size
@@ -166,7 +195,24 @@ class Table(attributes: Seq[String]) {
    * @throws IllegalArgumentException if no attributes have been specified
    * @throws IllegalArgumentException if an output attribute does not exist in this table
    */
-  def project(outputAttributes: Seq[String]): Table = ???
+  def project(outputAttributes: Seq[String]): Table = {
+
+    // Validate if empty
+    if (outputAttributes.isEmpty)
+      throw new IllegalArgumentException("No attributes have been specified.")
+
+    // Validate if attributes are in the schema to begin with
+    if (outputAttributes.exists(attr => !schema.contains(attr)))
+      throw new IllegalArgumentException("An output attribute does not exist in the table")
+
+    val projectedRecords = records.map { record =>
+      TableRecord(outputAttributes.map(attr => attr -> record.getValue(attr)))
+    }
+
+    // Create the new table with bulk loading
+    // .toSeq is necessary since bulk loading expects a Seq[TableRecord] and projectedRecords is an ArrayBuffer[TableRecord]
+    Table(outputAttributes, projectedRecords.toSeq)
+  }
 
   /** Filters the table using the index with respect to a key.
    *
@@ -183,7 +229,7 @@ class Table(attributes: Seq[String]) {
     if (!attributes.contains(selectionAttribute))
       throw new IllegalArgumentException(s"no such attribute: $selectionAttribute")
     indexes.get(selectionAttribute) match {
-      case Some(index) => {
+      case Some(index) => 
         val qualifyingRecords = index
           .get(key)
           .map(recordID => getRecord(recordID))
@@ -192,7 +238,7 @@ class Table(attributes: Seq[String]) {
         val resultTable = Table(Seq(outputAttribute))
         outputRecords.foreach(record => resultTable.appendRecord(record))
         resultTable
-      }
+      
       case None => throw IllegalArgumentException("There is no index supporting point queries available for this attribute!")
     }
   }
@@ -213,7 +259,7 @@ class Table(attributes: Seq[String]) {
     if (!attributes.contains(selectionAttribute))
       throw new IllegalArgumentException(s"no such attribute: $selectionAttribute")
     indexes.get(selectionAttribute) match {
-      case Some(index: TreeIndex) => {
+      case Some(index: TreeIndex) => 
         val qualifyingRecords = index
           .getRange(inclusiveLowerKey, exclusiveUpperKey)
           .map(recordID => getRecord(recordID))
@@ -222,7 +268,7 @@ class Table(attributes: Seq[String]) {
         val resultTable = Table(Seq(outputAttribute))
         outputRecords.foreach(record => resultTable.appendRecord(record))
         resultTable
-      }
+      
       case Some(_) => throw IllegalArgumentException("There is no index supporting range queries available for this attribute!")
       case None => throw IllegalArgumentException("There is no index available for this attribute!")
     }
@@ -236,7 +282,29 @@ class Table(attributes: Seq[String]) {
    * @throws IllegalArgumentException if the selection attribute does not exist
    * @throws IllegalArgumentException if the output attribute does not exist
    */
-  def filterByScan(outputAttribute: String, selectionAttribute: String, requiredValue: Value): Table = ???
+  def filterByScan(outputAttribute: String, selectionAttribute: String, requiredValue: Value): Table = {
+
+    // Validations
+    if (!schema.contains(outputAttribute))
+      throw new IllegalArgumentException(s"no such attribute: $outputAttribute")
+
+    if (!schema.contains(selectionAttribute))
+      throw new IllegalArgumentException(s"no such attribute: $selectionAttribute")
+
+    // Filter records with the passed conditions
+    val matchingRecords = records.filter{ record =>
+      record.getValue(selectionAttribute) == requiredValue
+    }
+
+    // Extract only matching records with output Attribute matching
+    val outputRecords = matchingRecords.map{ record =>
+      TableRecord(Seq(outputAttribute -> record.getValue(outputAttribute)))
+    }
+
+    // Create the new table with bulk loading
+    Table(Seq(outputAttribute), outputRecords.toSeq)
+
+  }
 
   /** Filters the table with respect to a key using a full scan.
    *
@@ -248,7 +316,29 @@ class Table(attributes: Seq[String]) {
    * @throws IllegalArgumentException if the selection attribute does not exist
    * @throws IllegalArgumentException if the output attribute does not exist
    */
-  def filterRangeByScan(outputAttribute: String, selectionAttribute: String, inclusiveLowerKey: Value, exclusiveUpperKey: Value): Table = ???
+  def filterRangeByScan(outputAttribute: String, selectionAttribute: String, inclusiveLowerKey: Value, exclusiveUpperKey: Value): Table = {
+
+    // Validation again
+    if (!schema.contains(outputAttribute))
+      throw new IllegalArgumentException(s"no such attribute: $outputAttribute")
+
+    if (!schema.contains(selectionAttribute))
+      throw new IllegalArgumentException(s"no such attribute: $selectionAttribute")
+
+    // Filter records within the passing range
+    val matchingRecords = records.filter{ record =>
+      val value = record.getValue(selectionAttribute)
+      value >= inclusiveLowerKey && value < exclusiveUpperKey
+    }
+
+    // Extract the output attribute from the records
+    val outputRecords = matchingRecords.map{ record =>
+      TableRecord(Seq(outputAttribute -> record.getValue(outputAttribute)))
+    }
+
+    // Create the new table with bulk loading
+    Table(Seq(outputAttribute), outputRecords.toSeq)
+  }
 
   /** Returns a textual representation of all records currently stored in the table. */
   override def toString: String = records.mkString("Table:\n", "\n", "")
@@ -323,26 +413,42 @@ class TreeIndex(table: Table, attribute: String) extends MapBasedIndex(table, at
  *
  *  @param students the table of all registered students
  */
-def closeCall(students: Table): Table = ???
+def closeCall(students: Table): Table = {
+  // filter through index for given table, going through only the grade column and grabbing all students with a grade equal to 4.0
+  students.filterByIndex("studentID", "grade", 4.0)
+}
 
 /** Returns a new table containing the IDs of the students whose grade is better than 5.0.
  *
  *  @param students the table of all registered students
  */
-def passed(students: Table): Table = ???
+def passed(students: Table): Table = {
+  // filter through index for given table, going through only the grade column and grabbing all students with a grade better than 5.0
+  students.filterRangeByIndex("studentID", "grade", 0.0, 5.0)
+}
 
 /** Returns true if the specified student ID occurs in the table of registered students, false otherwise.
  *
  *  @param students the table of all registered students
  *  @param requestedStudent the ID to look for
  */
-def doesStudentExist(students: Table, requestedStudent: Value): Boolean = ???
+def doesStudentExist(students: Table, requestedStudent: Value): Boolean = {
+
+  // filter through the index for given table, going through only the studentID and comparing and filtering with requested value
+  students.filterByIndex("studentID", "studentID", requestedStudent).numRecords > 0
+}
 
 /** Returns the number of students who receive grade 1.0 but no bonus.
  *
  *  @param students the table of all registered students
  */
-def countBestGradeNoBonus(students: Table): Int = ???
+def countBestGradeNoBonus(students: Table): Int = {
+  // get all students with a grade of 1.0
+  val bestGrade = students.filterByIndex("bonus", "grade", 1.0)
+  // from those, get only those without a bonus
+  val noBonusIDs = bestGrade.filterByScan("bonus", "bonus", 0.0)
+  noBonusIDs.numRecords
+}
 
 
 /** Represents a database table that uses statistics to answer queries more efficiently.
@@ -355,9 +461,116 @@ class StatsTable(attributes: Seq[String]) extends Table(attributes) {
   private val attributeMax = mutable.Map[String, Value]()
 
   // override methods here
+  override def appendRecord(record: Seq[(String, Value)]): RecordID = {
+    // add parent method and capture recordID
+    val recordID = super.appendRecord(record)
 
-  def minimum(attribute: String): Value = ???
+    // update the statistics in the Maps for each attribute in the records
+    record.foreach { case (attr, value) =>
+      // Update min
+      if (!attributeMin.contains(attr) || value < attributeMin(attr)) {
+        attributeMin(attr) = value
+      }
+      // update max
+      if (!attributeMax.contains(attr) || value > attributeMax(attr)) {
+        attributeMax(attr) = value
+      }
+    }
+    // Return the recordID, else IDE has issues:
+    recordID
+  }
 
-  def maximum(attribute: String): Value = ???
+  /** Overrides the second appendRecord method
+  * (couldn't streamline it to make it work by calling the first without an overflow)
+  * so basically re-did the top for the TableRecord version
+  */
+  override def appendRecord(record: TableRecord): RecordID = {
+    // add parent method and capture recordID
+    val recordID = super.appendRecord(record)
 
+    // update the statistics in the Maps for each attribute in the records
+    schema.foreach { attr =>
+      val value = record.getValue(attr)
+
+      // min update
+      if (!attributeMin.contains(attr) || value < attributeMin(attr)) {
+        attributeMin(attr) = value
+      }
+      // max update
+      if (!attributeMax.contains(attr) || value > attributeMax(attr)) {
+        attributeMax(attr) = value
+      }
+    }
+    recordID
+  }
+
+  // bulk loading constructor for this case too, because why not?
+  def this(attributes: Seq[String], initialRecords: Seq[TableRecord]) = {
+    this(attributes)
+
+    initialRecords.foreach {record =>
+      val recordSeq = attributes.map(attr => attr -> record.getValue(attr))
+      appendRecord(recordSeq)
+    }
+  }
+
+  // Returns the minimum value of the given attribute
+  def minimum(attribute: String): Value = {
+    if (!schema.contains(attribute)){
+      throw new IllegalArgumentException(s"no such attribute: $attribute")
+    }
+    if (!attributeMin.contains(attribute)){
+      throw new NoSuchElementException(s"no minimum value for attribute $attribute")
+    }
+    attributeMin(attribute)
+  }
+
+  def maximum(attribute: String): Value = {
+    if (!schema.contains(attribute)){
+      throw new IllegalArgumentException(s"no such attribute: $attribute")
+    }
+    if (!attributeMax.contains(attribute)){
+      throw new NoSuchElementException(s"no maximum value for attribute $attribute")
+    }
+    attributeMax(attribute)
+  }
+
+  // last exercise - Statistiken für Anfragen nutzen
+
+  /** Overrides the methods needed - filterByScan and filterRangeByScan
+   * Adds checks to both of them to return an empty table, should
+   * the user input of upper and lower values not fit with the table's values
+   */
+
+  // filterByScan overriding:
+  override def filterByScan(outputAttribute: String, selectionAttribute: String, requiredValue: Value): Table = {
+
+    // validation check - what to do if no values/attributes? use parent method (should work as intended for the tests?)
+    if (!attributeMin.contains(selectionAttribute) || !attributeMax.contains(selectionAttribute)){
+      return super.filterByScan(outputAttribute, selectionAttribute, requiredValue)
+    }
+
+    // actual exercise question
+    if (minimum(selectionAttribute) > requiredValue || maximum(selectionAttribute) < requiredValue) {
+      new Table(Seq(outputAttribute))
+    } else {
+      super.filterByScan(outputAttribute, selectionAttribute, requiredValue)
+    }
+  }
+
+  // filterRangeByScan overriding:
+  override def filterRangeByScan(outputAttribute: String, selectionAttribute: String,
+                                 inclusiveLowerKey: Value, exclusiveUpperKey: Value): Table = {
+
+    // Validation check as above
+    if (!attributeMin.contains(selectionAttribute) || !attributeMax.contains(selectionAttribute)) {
+      return super.filterRangeByScan(outputAttribute, selectionAttribute, inclusiveLowerKey, exclusiveUpperKey)
+    }
+
+    if (exclusiveUpperKey < minimum(selectionAttribute) || inclusiveLowerKey > maximum(selectionAttribute)) {
+      new Table(Seq(outputAttribute))
+    } else {
+      super.filterRangeByScan(outputAttribute, selectionAttribute, inclusiveLowerKey, exclusiveUpperKey)
+    }
+  }
 }
