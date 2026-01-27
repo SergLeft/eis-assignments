@@ -15,7 +15,7 @@ build:
 test:
   stage: test
   script:
-    - sbt "testOnly dbms.v2.ScoredTableEqualsHashCodeSuite dbms.v2.ScoredTableSortSuite dbms.v2.ScoredIndexRepresentationSuite dbms.v2.ScoredTableJoinSuite dbms.v2.ScoredQuerySuite"
+    - sbt "testOnly datastructures.ScoredUnbalancedSearchTreeSuite dbms.v2.ScoredUnbalancedTreeIndexSuite expressions.ScoredExpressionSuite dbms.v2.ScoredComputationTableSuite datastructures.ScoredCounterSuite"
   dependencies:
     - build
   artifacts:
