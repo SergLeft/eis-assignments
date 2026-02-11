@@ -28,9 +28,14 @@ class TreeIndex(table: Table, attribute: String) extends MapBasedIndex(table, at
       .toSeq
   }
 
-  /** Returns a string representation of this index. */
-  override def toString: String = index
+  /**
+  / Returns a string representation of this index.
+  //override def toString: String = index
     .toSeq
     .sorted
-    .map((value, idString) => s"value $value occurs in row(s) $idString\n").mkString("")
+    .map((value, recordIDs) => s"value $value occurs in row(s) $recordIDs\n").mkString(", ")
+  //idString was Seq[RecordID], not a string -> rename optional to recordIDs to avoid confusion
+  //.mkString was changed to include ", " instead of " "
+  //method was moved to MapBasedIndex
+  */
 }

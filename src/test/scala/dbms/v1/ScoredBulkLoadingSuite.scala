@@ -2,7 +2,7 @@ package dbms.v1
 
 import org.scalatest.funsuite.AnyFunSuite
 
-/*
+
 class ScoredBulkLoadingSuite extends AnyFunSuite {
 
   private val schema = Seq("empId", "salary", "bonus")
@@ -93,4 +93,4 @@ class ScoredBulkLoadingSuite extends AnyFunSuite {
     }
   }
 }
-*/
+

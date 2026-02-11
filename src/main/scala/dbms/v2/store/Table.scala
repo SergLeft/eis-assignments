@@ -191,12 +191,98 @@ class Table(val schema: Schema) extends Iterable[TableRecord] {
   /** Returns a textual representation of all records currently stored in the table. */
   override def toString: String = records.mkString("Table:\n", "\n", "")
 
-  /** Joins two tables sharing exactly one attribute. */
-  def naturalJoin(other: Table): Table = ???
+  /** Checks whether this table is equal to another object
+   *
+   * Two tables are equal iff they contain the same records in the same order; the order of
+   * attributes within each record does not affect equality*/
+  override def equals(that: Any): Boolean = {
+    that match {
+      case other: Table => this.schema == other.schema && this.records == other.records
+      case _ => false
+    }
+  }
 
-  /** Returns a new table that is sorted by the given attributes */
-  def sortBy(attribute: String): Table = ???
 
-  /** Returns a new table that is sorted by the given attributes */
-  def sortBy(attributes: Seq[String]): Table = ???
+  /** Returns the hash code for the table. Guarantees, that:
+   * if t1 == t2, then t1.hashCode == t2.hashCode */
+  override def hashCode: Int = (schema, records).hashCode
+
+  /** Joins two tables sharing exactly one attribute.
+   *
+   * The result has all the combinations of records from both the tables
+   * where a shared attribute has the same value. Columns from the "other" table
+   * (excluding shared) are appended to the respective, matching row.
+   *
+   * @param other the other table to join with
+   * @return a new [[Table]] with the result of the joining of both tables
+   * @throws IllegalArgumentException if the tables do not share exactly one attribute
+   * @throws IllegalArgumentException if the shared attribute has a different data type
+   */
+  def naturalJoin(other: Table): Table = {
+    // Look for shared attributes
+    val sharedAttributes = this.schema.attributes.intersect(other.schema.attributes)
+
+    // Validate for EXACTLY one shared attribute
+    if (sharedAttributes.size !=1)
+      throw IllegalArgumentException("Tables must share EXACTLY one attribute for a natural join!")
+
+    val joinAttribute = sharedAttributes.head
+
+    // Validate for the same data type!
+    if (this.schema.getDataType(joinAttribute) != other.schema.getDataType(joinAttribute))
+      throw IllegalArgumentException("Shared attribute MUST have same data type in BOTH tables!")
+
+    // Build new schema: this.schema + other.schema without the join attribute from "other"
+    val otherAttributes = other.schema.filter((attr, _) => attr != joinAttribute).toSeq
+    val newSchemaElems = this.schema.toSeq ++ otherAttributes
+    val newSchema = Schema(newSchemaElems)
+
+    // For each of the records in "this", look for matching ones in "other"
+    val joinedRecords = this.records.flatMap { thisRecord =>
+      val joinValue = thisRecord.getValue(joinAttribute)
+
+      other.records
+        .filter(otherRecord => otherRecord.getValue(joinAttribute) == joinValue)
+        .map{ otherRecord =>
+          // Merge the attributes from "thisRecord" and the non-shared ones from "otherRecord"
+          val thisElems = thisRecord.toSeq
+          val otherElems = otherRecord.filter((attr, _) => attr != joinAttribute).toSeq
+          TableRecord(thisElems ++ otherElems)
+        }
+    }
+
+    Table(newSchema, joinedRecords)
+  }
+
+  /** Returns a new table that is sorted by the given attributes
+   *
+   * @param attribute the attribute to sort by
+   * @return a new [[Table]] with the same records, sorted by that given attribute
+   * @throws IllegalArgumentException if the given attribute does not exist in the table's schema
+   */
+  def sortBy(attribute: String): Table = sortBy(Seq(attribute))
+
+  /** Returns a new table that is sorted by the given attributes
+   *
+   * @param attributes the attributes to sort by, in order of priority
+   * @return a new [[Table]] with the same records, sorted by the given attributes
+   * @throws IllegalArgumentException if any of the given attributes does not exist in the table's schema
+   */
+  def sortBy(attributes: Seq[String]): Table = {
+    attributes.foreach { attr =>
+      if(!schema.contains(attr))
+        throw IllegalArgumentException(s"Attribute $attr is not on this table.")
+    }
+
+    val sortedRecords = records.sortWith { (r1, r2) =>
+      // Look for the first attribute that has differing records
+      attributes
+        .map(attr => r1.getValue(attr).compare(r2.getValue(attr)))
+        .find(_ != 0) //find first non-zero comparison
+        .getOrElse(0) < 0 //if all are equal, none of them is "less"
+
+    }
+
+    Table(schema, sortedRecords)
+  }
 }

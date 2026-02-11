@@ -48,4 +48,13 @@ abstract class MapBasedIndex(table: Table, attribute: String) extends IsIndex {
           
     index.getOrElse(key, Seq())   
   }
+
+  //Method was moved here from subclasses. Index and inheritance make it redundant in subclasses
+  /** Returns a string representation of this index. */
+  override def toString: String = index
+    .toSeq
+    .sorted
+    .map((value, recordIDs) => s"value $value occurs in row(s) ${recordIDs.mkString(" and ")}\n").mkString("")
+
+
 }

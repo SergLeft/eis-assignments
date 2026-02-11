@@ -6,7 +6,7 @@ import dbms.v2.store.*
 import org.scalatest.funsuite.AnyFunSuite
 
 
-/*
+
 class ScoredUnbalancedTreeIndexSuite extends AnyFunSuite {
 
   private val attributes = Seq("salary", "bonus", "department")
@@ -110,4 +110,4 @@ class ScoredUnbalancedTreeIndexSuite extends AnyFunSuite {
     assert(query.toSet == expected.toSet)
   }
 }
-*/
+

@@ -35,6 +35,38 @@ def referencedVariables(ex: Expression): Set[String] = ex match {
 protected def simplified(ex: Expression): Expression = ex match {
   case BinaryOperation("+", Constant(0), term)            => term
   case BinaryOperation("+", term, Constant(0))            => term
+  
+  // 1) 0 is left absorbing for multiplication
+  case BinaryOperation("*", Constant(0), _)               => Constant(0)
+  // 2) 0 is right absorbing for multiplication
+  case BinaryOperation("*", _, Constant(0))               => Constant(0)
+  // 5) (-1)*x = -x must come before 3) since -1 is more specific than any constant
+  case BinaryOperation("*", Constant(-1), term)            => UnaryOperation("-", term)
+  // 6) x*(-1) = -x same reasoning
+  case BinaryOperation("*", term, Constant(-1))            => UnaryOperation("-", term)
+  // 3) 1 is left neutral for multiplication
+  case BinaryOperation("*", Constant(1), term)             => term
+  // 4) 1 is right neutral for multiplication
+  case BinaryOperation("*", term, Constant(1))             => term
+  // 7) double negation
+  case UnaryOperation("-", UnaryOperation("-", term))      => term
+  // 8) idempotence of abs: abs(abs(x)) = abs(x)
+  case UnaryOperation("abs", UnaryOperation("abs", term)) => UnaryOperation("abs", term)
+  // constant folding: if all operands are constants, evaluate differently
+  case UnaryOperation(op, Constant(v)) =>
+    try {
+      Constant(evaluate(ex, Map()))
+    } catch {
+      case _: ArithmeticException => throw ArithmeticException("division by zero during constant folding")
+    }
+  case BinaryOperation(op, Constant(l), Constant(r)) =>
+    try {
+      Constant(evaluate(ex, Map()))
+    } catch {
+      case _: ArithmeticException => throw ArithmeticException("division by zero during constant folding")
+    }
+  
+  // no simplification applicable 
   case _ => ex
 }
 
